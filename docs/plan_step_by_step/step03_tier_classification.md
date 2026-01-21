@@ -132,6 +132,15 @@ class TierClassifier:
             pct = count / len(df) * 100
             print(f"  - {tier}: {count:,} combos ({pct:.1f}%)")
         
+        # Special report for wool
+        if 'wool' in df['app_id'].values:
+            wool_tier = df[df['app_id'] == 'wool']['tier'].values[0] if len(df[df['app_id'] == 'wool']) > 0 else 'N/A'
+            wool_cv = df[df['app_id'] == 'wool']['cv'].values[0] if len(df[df['app_id'] == 'wool']) > 0 else 0
+            print(f"\n📦 WOOL APP Classification:")
+            print(f"  - Tier: {wool_tier}")
+            print(f"  - CV: {wool_cv:.2f}")
+            print(f"  - Status: {'✓ Premium (Tier 1)' if wool_tier == 'tier1' else '✓ Classified as ' + wool_tier}")
+        
         return df
     
     def add_metadata(self, tier_df):

@@ -78,7 +78,7 @@ class LookalikeModel:
             'cpi_quality_score': 'mean',
             'campaign_ltv_avg': 'first',
             'campaign_total_installs': 'first',
-            'ltv_d30': 'mean'  # Target
+            'ltv_d60': 'mean'  # Target
         }).reset_index()
         
         print(f"  ✓ Aggregated {len(campaign_agg)} campaigns")
@@ -118,10 +118,10 @@ class LookalikeModel:
         
         # Calculate average LTV per cluster
         cluster_stats = campaign_df.groupby('cluster').agg({
-            'ltv_d30': ['mean', 'median', 'count']
+            'ltv_d60': ['mean', 'median', 'count']
         })
         
-        self.cluster_avg_ltv = campaign_df.groupby('cluster')['ltv_d30'].mean().to_dict()
+        self.cluster_avg_ltv = campaign_df.groupby('cluster')['ltv_d60'].mean().to_dict()
         
         print(f"\n  Cluster Statistics:")
         for cluster_id, avg_ltv in sorted(self.cluster_avg_ltv.items()):
@@ -174,8 +174,8 @@ class LookalikeModel:
         campaign_val['cluster'] = clusters
         
         # Metrics
-        mape = mean_absolute_percentage_error(campaign_val['ltv_d30'], campaign_val['ltv_pred'])
-        r2 = r2_score(campaign_val['ltv_d30'], campaign_val['ltv_pred'])
+        mape = mean_absolute_percentage_error(campaign_val['ltv_d60'], campaign_val['ltv_pred'])
+        r2 = r2_score(campaign_val['ltv_d60'], campaign_val['ltv_pred'])
         
         print(f"  ✓ MAPE: {mape:.4f}")
         print(f"  ✓ R²: {r2:.4f}")

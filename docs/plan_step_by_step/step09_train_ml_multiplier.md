@@ -79,8 +79,8 @@ class MLMultiplierModel:
         """Calculate target multiplier"""
         df = df.copy()
         
-        # Target multiplier = ltv_d30 / (rev_d0 + rev_d1)
-        df['target_multiplier'] = df['ltv_d30'] / (df['rev_sum'] + 1e-6)
+        # Target multiplier = ltv_d60 / (rev_d0 + rev_d1)
+        df['target_multiplier'] = df['ltv_d60'] / (df['rev_sum'] + 1e-6)
         
         # Clip extreme values
         df['target_multiplier'] = df['target_multiplier'].clip(0, 50)
@@ -181,7 +181,7 @@ def train_multiplier_for_tier(tier, df_train, df_val):
     ml_mult.train(X_train, y_train, X_val, ml_mult.calculate_target_multiplier(df_val_tier))
     
     # Evaluate (using actual LTV)
-    results = ml_mult.evaluate(X_val, df_val_tier['ltv_d30'], df_val_tier['rev_sum'])
+    results = ml_mult.evaluate(X_val, df_val_tier['ltv_d60'], df_val_tier['rev_sum'])
     
     # Save
     ml_mult.save_model(tier)

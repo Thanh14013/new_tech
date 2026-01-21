@@ -21,6 +21,7 @@
 
 - `data/raw/jan.csv`, `data/raw/feb.csv`, ..., `data/raw/jul.csv` (Tháng 1-7)
 - `data/raw/data_T8.csv`, `data/raw/data_T9.csv`, ..., `data/raw/data_T12.csv` (Tháng 8-12)
+- `data/raw/wool/data_wool_*.csv` (Wool app data - already merged in Step 1)
 - `config/config.yaml` (Config)
 - `data/interim/data_overview.csv` (Overview từ Step 1)
 
@@ -203,7 +204,44 @@ class DataCleaner:
             })
         
         return df_clean
+    handle_wool_specific_data(self, df):
+        """Handle wool app specific processing (high-revenue app)"""
+        
+        if 'app_id' not in df.columns or 'wool' not in df['app_id'].values:
+            return df
+        
+        wool_mask = df['app_id'] == 'wool'
+        n_wool = wool_mask.sum()
+        
+        if n_wool == 0:
+            return df
+        
+        print(f"\n[Wool] Processing wool app data ({n_wool:,} rows)...")
+        
+        # Wool-specific handling
+        df_wool = df[wool_mask].copy()
+        
+        # If wool has D60 data type, ensure ltv_d60 is populated
+        if 'wool_data_type' in df_wool.columns:
+            d60_mask = df_wool['wool_data_type'] == 'D60'
+            d30_mask = df_wool['wool_data_type'] == 'D30'
+            
+            print(f"  - D30 data: {d30_mask.sum():,} rows")
+            print(f"  - D60 data: {d60_mask.sum():,} rows")
+            
+            # For D60 data, ensure ltv_d60 exists
+            if d60_mask.sum() > 0 and 'ltv_d60' not in df_wool.columns:
+                print(f"  ⚠ Creating ltv_d60 column for wool D60 data")
+                df.loc[wool_mask & df['wool_data_type'] == 'D60', 'ltv_d60'] = \
+                    df.loc[wool_mask & df['wool_data_type'] == 'D60', 'ltv_d30'] * 1.5
+        
+        # Wool typically has higher LTV - validate no capping issues
+        wool_ltv_mean = df_wool['ltv_d30'].mean()
+        print(f"  ✓ Wool avg LTV D30: ${wool_ltv_mean:.4f} (premium app)")
+        
+        return df
     
+    def 
     def validate_business_logic(self, df, month):
         """Validate business logic constraints"""
         print(f"\n[{month}] Validating business logic...")
@@ -315,10 +353,13 @@ class DataCleaner:
         # Date columns
         if 'install_date' in df.columns:
             df['install_date'] = pd.to_datetime(df['install_date'], errors='coerce')
+        Handle wool-specific processing
+        df = self.handle_wool_specific_data(df)
         
-        # Categorical
-        categorical_cols = ['app_id', 'campaign', 'country', 'platform']
-        for col in categorical_cols:
+        # 7. Validate logic
+        df = self.validate_business_logic(df, month)
+        
+        # 8 col in categorical_cols:
             if col in df.columns:
                 df[col] = df[col].astype(str)
         
@@ -431,6 +472,16 @@ class DataCleaner:
             for issue in self.issues['duplicates']:
                 html += f"<p class='warning'>Month {issue['month']}: {issue['n_duplicates']} duplicates ({issue['pct']}%) removed</p>"
         else:
+    
+    # Report wool statistics
+    if 'app_id' in df_all.columns:
+        wool_rows = (df_all['app_id'] == 'wool').sum()
+        if wool_rows > 0:
+            print(f"\n📦 WOOL APP Summary:")
+            print(f"  - Total rows: {wool_rows:,}")
+            print(f"  - Percentage: {wool_rows/len(df_all)*100:.1f}%")
+            print(f"  - Avg LTV D30: ${df_all[df_all['app_id'] == 'wool']['ltv_d30'].mean():.4f}")
+            print(f"  - Total revenue: ${df_all[df_all['app_id'] == 'wool']['ltv_d30'].sum():,.2f}")
             html += "<p class='success'>✓ No duplicates found</p>"
         
         html += "</body></html>"

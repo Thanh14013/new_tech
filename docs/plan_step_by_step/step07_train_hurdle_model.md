@@ -12,17 +12,19 @@
 Train Two-Stage Hurdle Model (V2.1 Enhancement #1):
 
 **Stage 1 (Classification):** Dự đoán "will pay?" (XGBClassifier)  
-- Target: `is_payer` = (ltv_d30 > 0)
+- Target: `is_payer` = (ltv_d60 > 0)
 - Metric: AUC ≥ 0.75
 
 **Stage 2 (Regression):** Dự đoán "how much?" (XGBRegressor)  
-- Target: `ltv_d30` (chỉ payers)
+- Target: `ltv_d60` (chỉ payers)
 - Metric: R² ≥ 0.6, MAPE ≤ 8%
 
 **Final Prediction:**  
 ```
-ltv_pred = P(payer) × E[LTV | payer]
+ltv_pred_d60 = P(payer_d60) × E[LTV_D60 | payer]
 ```
+
+**⭐ YÊU CẦU:** Model phải output D60 prediction cho mọi campaign, không phụ thuộc vào actual data có đến D60 hay không.
 
 ---
 
@@ -246,8 +248,8 @@ def train_hurdle_for_tier(tier, df_train, df_val):
     X_val = hurdle.prepare_features(df_val_tier)
     
     # Stage 1 targets (binary)
-    y_train_is_payer = (df_train_tier['ltv_d30'] > 0).astype(int)
-    y_val_is_payer = (df_val_tier['ltv_d30'] > 0).astype(int)
+    y_train_is_payer = (df_train_tier['ltv_d60'] > 0).astype(int)
+    y_val_is_payer = (df_val_tier['ltv_d60'] > 0).astype(int)
     
     print(f"\nPayer distribution:")
     print(f"  - Train: {y_train_is_payer.mean()*100:.1f}% payers")
@@ -263,10 +265,10 @@ def train_hurdle_for_tier(tier, df_train, df_val):
     val_payer_mask = y_val_is_payer == 1
     
     X_train_payers = X_train[train_payer_mask]
-    y_train_payers = df_train_tier.loc[train_payer_mask, 'ltv_d30']
+    y_train_payers = df_train_tier.loc[train_payer_mask, 'ltv_d60']
     
     X_val_payers = X_val[val_payer_mask]
-    y_val_payers = df_val_tier.loc[val_payer_mask, 'ltv_d30']
+    y_val_payers = df_val_tier.loc[val_payer_mask, 'ltv_d60']
     
     # Train Stage 2
     ltv_train_pred, ltv_val_pred = hurdle.train_stage2_regressor(
@@ -274,7 +276,7 @@ def train_hurdle_for_tier(tier, df_train, df_val):
     )
     
     # Evaluate full model
-    results = hurdle.evaluate(X_val, df_val_tier['ltv_d30'])
+    results = hurdle.evaluate(X_val, df_val_tier['ltv_d60'])
     
     # Save models
     hurdle.save_models(tier)

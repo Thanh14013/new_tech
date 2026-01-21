@@ -31,7 +31,8 @@
 - `data/raw/data_T10.csv` (Tháng 10/2025)
 - `data/raw/data_T11.csv` (Tháng 11/2025)
 - `data/raw/data_T12.csv` (Tháng 12/2025)
-- `data/raw/wool/data_wool_*.csv` (Data wool riêng - optional)
+- **`data/raw/wool/data_wool_D30_T11_T12.csv`** (Wool app - D30 data, high-revenue)
+- **`data/raw/wool/data_wool_D60_T7_T10.csv`** (Wool app - D60 data, high-revenue)
 - `data/raw/countries_tier.csv` (Phân loại quốc gia)
 
 ---
@@ -301,6 +302,63 @@ class DataLoader:
             print("⚠ countries_tier.csv not found, will create default")
             return None
     
+    def load_wool_data(self):
+        """Load special wool app data (high-revenue app)"""
+        wool_path = self.data_path / "wool"
+        
+        if not wool_path.exists():
+            print("⚠ Wool folder not found, skipping wool data")
+            return None
+        
+        print("\n📦 Loading WOOL data (high-revenue app)...")
+        
+        wool_dfs = []
+        
+        # Load D30 data (T11, T12)
+        d30_file = wool_path / "data_wool_D30_T11_T12.csv"
+        if d30_file.exists():
+            df_d30 = pd.read_csv(d30_file)
+            print(f"  ✓ Wool D30 (T11-T12): {len(df_d30):,} rows")
+            
+            # Add month info based on data
+            # Assuming có column để identify month, hoặc split 50/50
+            if 'month' not in df_d30.columns:
+                # Split half-half for T11 and T12
+                split_idx = len(df_d30) // 2
+                df_d30.loc[:split_idx, 'month'] = 'M11'
+                df_d30.loc[split_idx:, 'month'] = 'M12'
+            
+            df_d30['wool_data_type'] = 'D30'
+            wool_dfs.append(df_d30)
+        
+        # Load D60 data (T7-T10)
+        d60_file = wool_path / "data_wool_D60_T7_T10.csv"
+        if d60_file.exists():
+            df_d60 = pd.read_csv(d60_file)
+            print(f"  ✓ Wool D60 (T7-T10): {len(df_d60):,} rows")
+            
+            # Map to months M7-M10
+            if 'month' not in df_d60.columns:
+                # Split into 4 parts for M7, M8, M9, M10
+                n_rows = len(df_d60)
+                chunk_size = n_rows // 4
+                
+                df_d60.loc[:chunk_size, 'month'] = 'M7'
+                df_d60.loc[chunk_size:chunk_size*2, 'month'] = 'M8'
+                df_d60.loc[chunk_size*2:chunk_size*3, 'month'] = 'M9'
+                df_d60.loc[chunk_size*3:, 'month'] = 'M10'
+            
+            df_d60['wool_data_type'] = 'D60'
+            wool_dfs.append(df_d60)
+        
+        if wool_dfs:
+            wool_combined = pd.concat(wool_dfs, ignore_index=True)
+            print(f"\n  ✓ Total Wool rows: {len(wool_combined):,}")
+            return wool_combined
+        else:
+            print("  ⚠ No wool data files found")
+            return None
+    
     def explore_data(self, df):
         """Khám phá dữ liệu ban đầu"""
         print("\n" + "="*60)
@@ -398,6 +456,21 @@ def main():
     
     # Load country tiers (optional)
     country_df = loader.load_country_tiers()
+    
+    # Load wool data (high-revenue app)
+    wool_df = loader.load_wool_data()
+    
+    # Merge wool data with main data if available
+    if wool_df is not None:
+        print("\n🔗 Merging WOOL data with main dataset...")
+        
+        # Ensure wool has app_id
+        if 'app_id' not in wool_df.columns:
+            wool_df['app_id'] = 'wool'
+        
+        # Merge (append wool rows)
+        df = pd.concat([df, wool_df], ignore_index=True)
+        print(f"  ✓ Total rows after wool merge: {len(df):,}")
     
     # 4. Explore data
     print("\n[4/4] Exploring data...")

@@ -83,7 +83,7 @@ class CurveFittingModel:
                 continue
             
             # Observed data points (assuming we have D0, D1, D7, D30)
-            # For simplicity, use rev_d0, rev_d1, ltv_d7, ltv_d30
+            # For simplicity, use rev_d0, rev_d1, ltv_d7, ltv_d60
             days = np.array([0, 1, 7, 30])
             
             # Get average values
@@ -91,7 +91,7 @@ class CurveFittingModel:
                 group['rev_d0'].mean(),
                 group['rev_d1'].mean(),
                 group.get('ltv_d7', group['rev_d1'] * 2).mean() if 'ltv_d7' in group.columns else group['rev_d1'].mean() * 2,
-                group['ltv_d30'].mean()
+                group['ltv_d60'].mean()
             ])
             
             try:
@@ -238,8 +238,8 @@ class CurveFittingModel:
         
         print(f"  ✓ Fitted {len(campaign_params)} campaigns")
     
-    def predict(self, app_id, campaign, tier, target_day=30):
-        """Predict LTV at target_day for a campaign"""
+    def predict(self, app_id, campaign, tier, target_day=60):
+        """Predict LTV at target_day for a campaign (default D60)"""
         
         # Get params
         params_df = self.params.get(tier)
@@ -273,14 +273,14 @@ class CurveFittingModel:
         predictions = []
         
         for idx, row in df_tier.iterrows():
-            pred = self.predict(row['app_id'], row['campaign'], tier, target_day=30)
-            predictions.append(pred if pred is not None else df_tier['ltv_d30'].median())
+            pred = self.predict(row['app_id'], row['campaign'], tier, target_day=60)
+            predictions.append(pred if pred is not None else df_tier['ltv_d60'].median())
         
         df_tier['ltv_pred'] = predictions
         
         # Metrics
-        mape = mean_absolute_percentage_error(df_tier['ltv_d30'], df_tier['ltv_pred'])
-        r2 = r2_score(df_tier['ltv_d30'], df_tier['ltv_pred'])
+        mape = mean_absolute_percentage_error(df_tier['ltv_d60'], df_tier['ltv_pred'])
+        r2 = r2_score(df_tier['ltv_d60'], df_tier['ltv_pred'])
         
         print(f"  ✓ MAPE: {mape:.4f}")
         print(f"  ✓ R²: {r2:.4f}")
