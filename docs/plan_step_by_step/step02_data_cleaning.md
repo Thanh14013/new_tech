@@ -19,7 +19,8 @@
 
 ## 📥 INPUT
 
-- `data/raw/data_T*.csv` (Raw data từ Step 1)
+- `data/raw/jan.csv`, `data/raw/feb.csv`, ..., `data/raw/jul.csv` (Tháng 1-7)
+- `data/raw/data_T8.csv`, `data/raw/data_T9.csv`, ..., `data/raw/data_T12.csv` (Tháng 8-12)
 - `config/config.yaml` (Config)
 - `data/interim/data_overview.csv` (Overview từ Step 1)
 
@@ -27,8 +28,8 @@
 
 ## 📤 OUTPUT
 
-- `data/processed/clean_data_T8.csv` → `clean_data_T12.csv` (Clean data theo tháng)
-- `data/processed/clean_data_all.csv` (Tất cả tháng)
+- `data/processed/clean_data_M1.csv` → `clean_data_M12.csv` (Clean data theo tháng)
+- `data/processed/clean_data_all.csv` (Tất cả 12 tháng)
 - `results/data_quality_report.html` (HTML report)
 - `results/step02_cleaning_summary.csv` (Summary stats)
 
@@ -54,9 +55,21 @@ class DataCleaner:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
+        # Month file mapping
+        self.month_files = {
+            'M1': 'jan.csv', 'M2': 'feb.csv', 'M3': 'mar.csv', 'M4': 'apr.csv',
+            'M5': 'may.csv', 'M6': 'jun.csv', 'M7': 'jul.csv',
+            'M8': 'data_T8.csv', 'M9': 'data_T9.csv', 'M10': 'data_T10.csv',
+            'M11': 'data_T11.csv', 'M12': 'data_T12.csv'
+        }
+        
         self.issues = {
-            'missing_values': [],
-            'outliers': [],
+            'missing_values': [], (M1-M12)"""
+        filename = self.month_files.get(month)
+        if filename is None:
+            raise ValueError(f"Unknown month: {month}")
+        
+        path = Path(self.config['data']['raw_path']) / filename
             'duplicates': [],
             'logic_violations': [],
             'invalid_types': []

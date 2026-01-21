@@ -19,14 +19,20 @@
 ## 📥 INPUT
 
 **Data Sources:**
-- `data/raw/data_T8.csv` (Tháng 8)
-- `data/raw/data_T9.csv` (Tháng 9)
-- `data/raw/data_T10.csv` (Tháng 10)
-- `data/raw/data_T11.csv` (Tháng 11)
-- `data/raw/data_T12.csv` (Tháng 12)
-- `data/raw/wool/data_wool_*.csv` (Data wool riêng)
+- `data/raw/jan.csv` (Tháng 1/2025)
+- `data/raw/feb.csv` (Tháng 2/2025)
+- `data/raw/mar.csv` (Tháng 3/2025)
+- `data/raw/apr.csv` (Tháng 4/2025)
+- `data/raw/may.csv` (Tháng 5/2025)
+- `data/raw/jun.csv` (Tháng 6/2025)
+- `data/raw/jul.csv` (Tháng 7/2025)
+- `data/raw/data_T8.csv` (Tháng 8/2025)
+- `data/raw/data_T9.csv` (Tháng 9/2025)
+- `data/raw/data_T10.csv` (Tháng 10/2025)
+- `data/raw/data_T11.csv` (Tháng 11/2025)
+- `data/raw/data_T12.csv` (Tháng 12/2025)
+- `data/raw/wool/data_wool_*.csv` (Data wool riêng - optional)
 - `data/raw/countries_tier.csv` (Phân loại quốc gia)
-- `data/raw/apr.csv`, `jan.csv`, etc. (Data bổ sung nếu có)
 
 ---
 
@@ -155,9 +161,10 @@ class ProjectSetup:
                 'version': '2.1.0',
                 'created_date': datetime.now().strftime('%Y-%m-%d'),
                 'target_mape': 0.05
-            },
-            
-            'data': {
+            },all_months': ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12'],
+                'train_months': ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10'],
+                'validation_month': 'M11',
+                'test_months': ['M12']
                 'raw_path': 'data/raw',
                 'processed_path': 'data/processed',
                 'features_path': 'data/features',
@@ -224,17 +231,42 @@ class DataLoader:
     def __init__(self, config):
         self.config = config
         self.data_path = Path(config['data']['raw_path'])
+        # Month mapping: M1->jan, M2->feb, ..., M8->T8, ...
+        self.month_files = {
+            'M1': 'jan.csv',
+            'M2': 'feb.csv',
+            'M3': 'mar.csv',
+            'M4': 'apr.csv',
+            'M5': 'may.csv',
+            'M6': 'jun.csv',
+            'M7': 'jul.csv',
+            'M8': 'data_T8.csv',
+            'M9': 'data_T9.csv',
+            'M10': 'data_T10.csv',
+            'M11': 'data_T11.csv',
+            'M12': 'data_T12.csv'
+        }
+        12 months data (Jan-Dec 2025)"""
+        all_months = self.config['data']['all_months']  # M1-M12
         
-    def load_monthly_data(self, month):
-        """Load data for a specific month"""
-        file_path = self.data_path / f"data_{month}.csv"
+        dfs = []
+        for month in all_months:
+            df = self.load_monthly_data(month)
+            if df is not None:
+                dfs.append(df)
         
-        if not file_path.exists():
+        if not dfs:
+            raise ValueError("No data loaded!")
+        
+        combined = pd.concat(dfs, ignore_index=True)
+        print(f"\n✓ Total rows loaded: {len(combined):,}")
+        print(f"✓ Months loaded: {len(dfs)}/12
             print(f"⚠ Warning: {file_path} not found")
             return None
         
-        print(f"Loading {month}...")
+        print(f"Loading {month} ({filename})...")
         df = pd.read_csv(file_path)
+        df['month'] = month  # Standardize to M1-M12le_path)
         df['month'] = month
         
         return df
@@ -275,10 +307,15 @@ class DataLoader:
         print("DATA EXPLORATION")
         print("="*60)
         
-        # Basic stats
-        print(f"\n1. Shape: {df.shape}")
-        print(f"   - Rows: {len(df):,}")
-        print(f"   - Columns: {len(df.columns)}")
+        # Basic stats (2025):")
+            for month, count in month_dist.items():
+                pct = count / len(df) * 100
+                month_name = {
+                    'M1': 'Jan', 'M2': 'Feb', 'M3': 'Mar', 'M4': 'Apr',
+                    'M5': 'May', 'M6': 'Jun', 'M7': 'Jul', 'M8': 'Aug',
+                    'M9': 'Sep', 'M10': 'Oct', 'M11': 'Nov', 'M12': 'Dec'
+                }.get(month, month)
+                print(f"   - {month} ({month_name})f.columns)}")
         
         # Columns
         print(f"\n2. Columns ({len(df.columns)}):")
@@ -386,16 +423,24 @@ if __name__ == "__main__":
 
 ### Run Script
 
-```bash
-cd d:\WORKSPACE\new_technology
-python scripts/step01_setup_and_load.py
-```
+```bashM1 (jan.csv)...
+Loading M2 (feb.csv)...
+Loading M3 (mar.csv)...
+Loading M4 (apr.csv)...
+Loading M5 (may.csv)...
+Loading M6 (jun.csv)...
+Loading M7 (jul.csv)...
+Loading M8 (data_T8.csv)...
+Loading M9 (data_T9.csv)...
+Loading M10 (data_T10.csv)...
+Loading M11 (data_T11.csv)...
+Loading M12 (data_T12.csv)...
 
-### Expected Output
-
+✓ Total rows loaded: 5,856,478
+✓ Months loaded: 12/12
 ```
-============================================================
-STEP 1: ENVIRONMENT SETUP & DATA LOADING
+===========5856478, 25)
+   - Rows: 5,856,478SETUP & DATA LOADING
 ============================================================
 
 [1/4] Creating folder structure...
@@ -414,12 +459,19 @@ STEP 1: ENVIRONMENT SETUP & DATA LOADING
 
 [2/4] Creating configuration...
 ✓ Created config: config/config.yaml
-
-[3/4] Loading data...
-Loading T8...
-Loading T9...
-Loading T10...
-Loading T11...
+ (2025):
+   - M1 (Jan): 488,040 rows (8.3%)
+   - M2 (Feb): 488,040 rows (8.3%)
+   - M3 (Mar): 488,040 rows (8.3%)
+   - M4 (Apr): 488,040 rows (8.3%)
+   - M5 (May): 488,040 rows (8.3%)
+   - M6 (Jun): 488,040 rows (8.3%)
+   - M7 (Jul): 488,040 rows (8.3%)
+   - M8 (Aug): 488,040 rows (8.3%)
+   - M9 (Sep): 488,040 rows (8.3%)
+   - M10 (Oct): 488,040 rows (8.3%)
+   - M11 (Nov): 488,040 rows (8.3%)
+   - M12 (Dec): 488,038 rows (8.3
 Loading T12...
 
 ✓ Total rows loaded: 2,928,239
@@ -512,7 +564,7 @@ print(overview)
 
 ### Issue 1: Missing CSV files
 **Error:** `FileNotFoundError: data_T8.csv not found`  
-**Solution:** 
+5856478ion:** 
 - Kiểm tra path: `data/raw/data_T8.csv`
 - Download missing files nếu cần
 

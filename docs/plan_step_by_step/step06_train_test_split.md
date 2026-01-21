@@ -10,9 +10,9 @@
 ## 🎯 MỤC TIÊU
 
 Chia data thành 3 sets:
-- **Train:** T8, T9, T10 (60%)
-- **Validation:** T11 (20%)
-- **Test:** T12 (20%)
+- **Train:** M1-M10 (Jan-Oct, 83%)
+- **Validation:** M11 (Nov, 8.5%)
+- **Test:** M12 (Dec, 8.5%)
 
 Đảm bảo no data leakage và stratified split theo tiers.
 
@@ -59,27 +59,20 @@ class DataSplitter:
         return df
     
     def split_by_month(self, df):
-        """Split by month"""
+        """Split by month (M1-M12)"""
         print("\nSplitting by month...")
         
-        train_months = self.config['data']['train_months']  # [T8, T9, T10, T11]
-        val_month = self.config['data']['validation_month']  # T11
-        test_months = self.config['data']['test_months']  # [T12]
+        train_months = self.config['data']['train_months']  # M1-M10
+        val_month = self.config['data']['validation_month']  # M11
+        test_months = self.config['data']['test_months']  # [M12]
         
-        # Note: T11 used for both train and validation
-        # Use first 80% of T11 for train, last 20% for validation
+        # Train: M1-M10 (Jan-Oct)
+        df_train = df[df['month'].isin(train_months)].copy()
         
-        # Train: T8, T9, T10, T11(80%)
-        df_train = df[df['month'].isin(['T8', 'T9', 'T10'])].copy()
+        # Validation: M11 (Nov)
+        df_val = df[df['month'] == val_month].copy()
         
-        # T11 split
-        df_t11 = df[df['month'] == 'T11'].copy()
-        df_t11 = df_t11.sort_values('install_date')
-        split_idx = int(len(df_t11) * 0.8)
-        df_train = pd.concat([df_train, df_t11.iloc[:split_idx]], ignore_index=True)
-        df_val = df_t11.iloc[split_idx:].copy()
-        
-        # Test: T12
+        # Test: M12 (Dec)
         df_test = df[df['month'].isin(test_months)].copy()
         
         # Summary
