@@ -14,14 +14,14 @@ import pandas as pd
 import yaml
 
 
-ROOT = Path(__file__).resolve().parents[1]  # tool_for_long_term/tool_total/data_loader.py -> tool_for_long_term
+ROOT = Path(__file__).resolve().parents[1]  # tool_total/data_loader.py -> new_technology
 
-# Wool app identifier
+# Wool app identifier (legacy, keep for compatibility)
 WOOL_APP_ID = "com.wool.puzzle.game3d"
 
-# Wool-specific hard date constraints
-WOOL_HARD_MIN_DATE = dt.date(2025, 7, 1)
-WOOL_HARD_MAX_DATE = dt.date(2025, 12, 24)
+# Date constraints from our D60 LTV data
+WOOL_HARD_MIN_DATE = dt.date(2025, 1, 1)
+WOOL_HARD_MAX_DATE = dt.date(2025, 12, 31)
 WOOL_DATA_AVAILABLE_UNTIL = dt.date(2025, 12, 31)
 
 
@@ -38,17 +38,15 @@ def _get_config_path(app_id: str = None) -> Path:
 
 
 def _get_results_dir(app_id: str = None) -> Path:
-    """Get results directory based on app"""
-    if app_id and is_wool_app(app_id):
-        return ROOT / "results_for_wool"
-    return ROOT / "results"
+    """Get results directory - point to our D60 LTV data"""
+    # Always use data/features for our D60 LTV project
+    return ROOT / "data" / "features"
 
 
 def _get_features_dir(app_id: str = None) -> Path:
-    """Get processed features directory based on app"""
-    if app_id and is_wool_app(app_id):
-        return ROOT / "data" / "processed_for_wool"
-    return ROOT / "data" / "processed"
+    """Get processed features directory - point to our D60 LTV data"""
+    # Use data/features for our D60 LTV project
+    return ROOT / "data" / "features"
 
 
 @lru_cache(maxsize=2)
@@ -59,24 +57,43 @@ def load_config(app_id: str = None) -> dict:
 
 
 def _available_window_files(app_id: str = None) -> List[Path]:
-    """Get all prediction files for the appropriate results directory"""
+    """Get validation data files for D60 LTV predictions"""
     results_dir = _get_results_dir(app_id)
     if not results_dir.exists():
         return []
     
-    # Wool uses different file naming: window_*_predictions.csv
-    # Normal uses: window_*_evaluated_predictions.csv
-    if app_id and is_wool_app(app_id):
-        files = list(results_dir.glob("window_*_predictions.csv"))
-    else:
-        files = list(results_dir.glob("window_*_evaluated_predictions.csv"))
+    # Our D60 LTV project uses: validation_enhanced.csv
+    # We'll create pseudo "window" files to match app.py expectations
+    # Return files with names like: window_d1_evaluated_predictions.csv (as Path objects)
+    files = []
+    
+    # Check for validation file - treat as all windows (D1, D3, D7)
+    val_file = results_dir / "validation_enhanced.csv"
+    if val_file.exists():
+        # Create pseudo paths for window_d1, window_d3, window_d7
+        # These don't need to exist physically - we'll intercept in load_predictions_file
+        for window in ['window_d1', 'window_d3', 'window_d7']:
+            # Create a pseudo path object
+            pseudo_path = results_dir / f"{window}_evaluated_predictions.csv"
+            files.append(pseudo_path)
+    
     return sorted(files)
 
 
 @lru_cache(maxsize=10)
 def load_predictions_file(path: Path) -> pd.DataFrame:
     """Load and parse predictions file"""
-    df = pd.read_csv(path)
+    # For D60 LTV project, all window pseudo-paths point to validation_enhanced.csv
+    actual_file = path.parent / "validation_enhanced.csv"
+    
+    if not actual_file.exists():
+        # Try test file as fallback
+        actual_file = path.parent / "test_enhanced.csv"
+    
+    if not actual_file.exists():
+        return pd.DataFrame()
+    
+    df = pd.read_csv(actual_file)
     if "install_date" in df.columns:
         df["install_date"] = pd.to_datetime(df["install_date"])
     if "app_id" in df.columns:
@@ -209,20 +226,15 @@ def load_data_slice(
     campaigns: List[str] | None
 ) -> Tuple[pd.DataFrame, dt.date, dt.date, bool]:
     """
-    Load predictions for specific app, date range, window, and campaigns
-    Also merges actual cumulative revenue curves from features file
+    Load D60 LTV predictions from validation/test data
     
     Returns:
         (dataframe, used_start_date, used_end_date, was_clamped)
     """
-    # Load predictions file for the window
     results_dir = _get_results_dir(app_id)
     
-    # Different file naming for Wool vs Normal
-    if is_wool_app(app_id):
-        pred_file = results_dir / f"{window}_predictions.csv"
-    else:
-        pred_file = results_dir / f"{window}_evaluated_predictions.csv"
+    # For D60 LTV project, we use validation_enhanced.csv as primary data
+    pred_file = results_dir / "validation_enhanced.csv"
     
     if not pred_file.exists():
         print(f"DEBUG: File not found {pred_file}")
@@ -233,41 +245,11 @@ def load_data_slice(
     if df.empty:
         return df, start_date, end_date, False
     
-    # Load features file to get actual cumrev columns
-    processed_dir = _get_features_dir(app_id)
-    features_file = processed_dir / f"{window}_features.csv"
-    
-    if features_file.exists():
-        # Load features with actual cumrev columns
-        df_features = pd.read_csv(features_file)
-        if "install_date" in df_features.columns:
-            df_features["install_date"] = pd.to_datetime(df_features["install_date"])
-        
-        # Get actual cumrev columns AND meta columns
-        actual_cols = [c for c in df_features.columns if c.startswith("cumrev_d")]
-        meta_cols = ["installs", "cost"] + [c for c in df_features.columns if c.startswith("unique_users")]
-        actual_cols.extend([c for c in meta_cols if c in df_features.columns])
-        
-        if actual_cols:
-            # Merge actual curves with predictions
-            merge_cols = ["install_date", "app_id", "campaign"]
-            # Ensure merge columns exist in both
-            if all(c in df_features.columns for c in merge_cols):
-                df_features_subset = df_features[merge_cols + actual_cols].copy()
-                
-                # Drop meta columns from df if they exist to avoid duplication/conflicts
-                for col in meta_cols:
-                    if col in df.columns:
-                        df = df.drop(columns=[col])
-
-                # Merge on install_date, app_id, campaign
-                df = df.merge(df_features_subset, on=merge_cols, how="left")
-    
     # Filter by app
     df = df[df["app_id"] == app_id].copy()
     
-    # Filter by campaigns (skip for Wool)
-    if campaigns and "campaign" in df.columns and not is_wool_app(app_id):
+    # Filter by campaigns
+    if campaigns and "campaign" in df.columns:
         df = df[df["campaign"].isin(campaigns)]
     
     # Filter by date range

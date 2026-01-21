@@ -88,3 +88,22 @@ semantic_matching:
     - 2
     - 3
   max_features: 1000
+
+# Prediction windows and target configuration
+windows:
+  window_d1:
+    name: "D1 (Early)"
+    feature_days: [1]
+    observation_days: 1
+  window_d3:
+    name: "D3 (Standard)"
+    feature_days: [1, 3]
+    observation_days: 3
+  window_d7:
+    name: "D7 (Accurate)"
+    feature_days: [1, 3, 7]
+    observation_days: 7
+
+target:
+  target_day: 60  # D60 LTV prediction
+  metric: ltv_d60
