@@ -1,0 +1,90 @@
+project:
+  name: LTV_ROAS_Prediction_V2.1
+  version: 2.1.0
+  created_date: '2026-01-21'
+  target_mape: 0.05
+
+data:
+  raw_path: data/raw
+  processed_path: data/processed
+  features_path: data/features
+  interim_path: data/interim
+  all_months:
+    - M1
+    - M2
+    - M3
+    - M4
+    - M5
+    - M6
+    - M7
+    - M8
+    - M9
+    - M10
+    - M11
+    - M12
+  train_months:
+    - M1
+    - M2
+    - M3
+    - M4
+    - M5
+    - M6
+    - M7
+    - M8
+    - M9
+    - M10
+  validation_month: M11
+  test_months:
+    - M12
+
+modeling:
+  methods:
+    - hurdle
+    - curve_fitting
+    - ml_multiplier
+    - lookalike
+  min_rows_tier1: 1000
+  min_rows_tier2: 300
+  min_rows_tier3: 100
+  random_seed: 42
+
+tiers:
+  tier1:
+    cv_threshold: 1.5
+    min_months: 3
+    target_mape: 0.04
+  tier2:
+    cv_threshold: 2.5
+    min_months: 2
+    target_mape: 0.06
+  tier3:
+    cv_threshold: .inf
+    min_months: 0
+    target_mape: 0.10
+
+features:
+  revenue_features:
+    - rev_sum
+    - rev_max
+    - rev_last
+    - rev_d0_d1_ratio
+  engagement_features:
+    - retention_d1
+    - avg_session_time_d1
+    - avg_level_reached_d1
+  cpi_features:
+    - actual_cpi
+    - cpi_vs_campaign_avg
+    - cpi_quality_score
+
+calibration:
+  rolling_window_months: 2
+  alpha: 0.3
+  seasonal_adjustment: true
+
+semantic_matching:
+  similarity_threshold: 0.6
+  ngram_range:
+    - 2
+    - 3
+  max_features: 1000
